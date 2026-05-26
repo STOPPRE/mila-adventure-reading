@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { BookOpen, Compass, Lightbulb, HelpCircle } from 'lucide-react';
 import MilaSprite from '../MilaSprite';
+import useSoundEffects from '../../hooks/useSoundEffects';
 
 export default function MazeChallenge({ challengeData, onComplete, onSkip, puppyComment }) {
   const { sentence, choices, correct, hint, narrative } = challengeData;
@@ -7,6 +9,9 @@ export default function MazeChallenge({ challengeData, onComplete, onSkip, puppy
   const [showResult, setShowResult] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [runningPath, setRunningPath] = useState(null); // 'left' | 'middle' | 'right'
+
+  // Sound Engine
+  const { playBark, playCheer, playIncorrect, playTick } = useSoundEffects();
 
   // Shuffle choices once on mount
   const [shuffledChoices, setShuffledChoices] = useState([]);
@@ -17,16 +22,22 @@ export default function MazeChallenge({ challengeData, onComplete, onSkip, puppy
   const handleSelect = (choice, index) => {
     if (selected !== null) return;
     
+    playTick();
     setSelected(choice);
-    // Map index to path name for animation
+    
     const paths = ['left', 'middle', 'right'];
     setRunningPath(paths[index]);
 
     const isCorrect = choice === correct;
     
-    // Trigger sequence: run, show result banner, complete challenge
+    // Trigger path running animation
     setTimeout(() => {
       setShowResult(true);
+      if (isCorrect) {
+        playCheer();
+      } else {
+        playIncorrect();
+      }
       setTimeout(() => {
         onComplete(isCorrect);
       }, 2500);
@@ -38,8 +49,10 @@ export default function MazeChallenge({ challengeData, onComplete, onSkip, puppy
   return (
     <div className="screen challenge-screen maze-screen">
       <div className="challenge-header">
-        <button className="back-btn" onClick={onSkip}>← Exit</button>
-        <div className="challenge-badge">📖 Spanish MAZE</div>
+        <button className="back-btn" onClick={() => { playTick(); onSkip(); }}>← Exit</button>
+        <div className="challenge-badge" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <BookOpen size={14} color="#C4A456" /> Spanish MAZE
+        </div>
       </div>
 
       <div className="challenge-body">
@@ -199,12 +212,14 @@ export default function MazeChallenge({ challengeData, onComplete, onSkip, puppy
           )}
 
           {!selected && !showHint && (
-            <button className="hint-btn" onClick={() => setShowHint(true)}>
-              💡 Need a hint?
+            <button className="hint-btn" onClick={() => { playTick(); setShowHint(true); }} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Lightbulb size={14} /> Need a hint?
             </button>
           )}
           {showHint && !selected && (
-            <div className="hint-box" style={{ width: '100%' }}>{hint}</div>
+            <div className="hint-box" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+              <HelpCircle size={14} color="#8B6F1F" /> {hint}
+            </div>
           )}
         </div>
       </div>

@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { Bone, Footprints, Settings, Trophy, Compass, Layers } from 'lucide-react';
 import MilaSprite from './MilaSprite';
 import { walkStops } from '../utils/gameData';
+import useSoundEffects from '../hooks/useSoundEffects';
 
 // Normalized coordinates (percentage %) for the 12 stops to form a winding S-curve path
 const stopCoords = [
@@ -18,11 +20,14 @@ const stopCoords = [
   { x: 95,  y: 50 },  // 12. Home with Mila
 ];
 
-export default function InteractiveMap({ currentStop, onContinue, treats, outfit }) {
+export default function InteractiveMap({ currentStop, onContinue, treats, outfit, onOpenSettings }) {
   const nextStop = walkStops[currentStop];
   const [milaPos, setMilaPos] = useState(stopCoords[Math.max(0, currentStop - 1)]);
   const [isWalking, setIsWalking] = useState(false);
   const containerRef = useRef(null);
+  
+  // Sound effects engine
+  const { playTick, playBark } = useSoundEffects();
 
   // Animate Mila's movement when currentStop changes
   useEffect(() => {
@@ -33,7 +38,6 @@ export default function InteractiveMap({ currentStop, onContinue, treats, outfit
 
     setIsWalking(true);
     
-    // Simulate walking animation delay
     const startX = milaPos.x;
     const startY = milaPos.y;
     const dx = targetPos.x - startX;
@@ -41,12 +45,12 @@ export default function InteractiveMap({ currentStop, onContinue, treats, outfit
     
     let startTime = null;
     const duration = 1800; // 1.8 seconds walk
+    let lastTickProgress = 0;
 
     function animate(timestamp) {
       if (!startTime) startTime = timestamp;
       const progress = Math.min((timestamp - startTime) / duration, 1);
       
-      // Easing function (easeInOutQuad)
       const ease = progress < 0.5 
         ? 2 * progress * progress 
         : 1 - Math.pow(-2 * progress + 2, 2) / 2;
@@ -56,10 +60,17 @@ export default function InteractiveMap({ currentStop, onContinue, treats, outfit
         y: startY + dy * ease
       });
 
+      // Play tick sounds at steps along the path to simulate stepping chimes
+      if (progress - lastTickProgress > 0.2) {
+        playTick();
+        lastTickProgress = progress;
+      }
+
       if (progress < 1) {
         requestAnimationFrame(animate);
       } else {
         setIsWalking(false);
+        playBark(); // bark happily when arriving!
       }
     }
 
@@ -85,17 +96,34 @@ export default function InteractiveMap({ currentStop, onContinue, treats, outfit
     <div className="screen map-screen" style={{ padding: '0.5rem 0 0' }}>
       {/* Game Statistics Top bar */}
       <header className="game-header" style={{ margin: '0.5rem 1rem 1rem' }}>
-        <div className="header-stats">
-          <div className="stat">
-            <span className="stat-emoji">🦴</span>
+        <div className="header-stats" style={{ display: 'flex', gap: '0.75rem' }}>
+          <div className="stat" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <Bone size={18} color="#A28043" />
             <span className="stat-num">{treats}</span>
           </div>
-          <div className="stat">
-            <span className="stat-emoji">🐾</span>
+          <div className="stat" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <Footprints size={18} color="#4A6B8A" />
             <span className="stat-num">{Math.min(currentStop + 1, walkStops.length)}/{walkStops.length}</span>
           </div>
         </div>
-        <div className="outfit-badge">{outfit.name}</div>
+        
+        {/* Actions panel */}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div className="outfit-badge">{outfit.name}</div>
+          <button 
+            onClick={() => { playTick(); onSwitch3D(); }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', background: 'white', borderRadius: '8px', border: '2px solid #E2E8F0', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}
+            title="Switch to 3D Map"
+          >
+            <Layers size={18} color="#4A6B8A" />
+          </button>
+          <button 
+            onClick={() => { playTick(); onOpenSettings(); }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '34px', height: '34px', background: 'white', borderRadius: '8px', border: '2px solid #E2E8F0', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}
+          >
+            <Settings size={18} color="#64748B" />
+          </button>
+        </div>
       </header>
 
       {/* Parallax Scrolling Map Area */}
@@ -204,8 +232,10 @@ export default function InteractiveMap({ currentStop, onContinue, treats, outfit
                     transition: 'all 0.3s'
                   }}
                 >
-                  <span style={{ fontSize: '1.1rem' }}>
-                    {isCompleted ? '✅' : stop.emoji}
+                  <span style={{ fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {isCompleted ? '✅' : (
+                      i === 11 ? <Trophy size={16} color="#A28043" /> : <Compass size={16} color="#64748B" />
+                    )}
                   </span>
                 </div>
                 <div 
@@ -266,8 +296,8 @@ export default function InteractiveMap({ currentStop, onContinue, treats, outfit
           <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: '#A28043', fontWeight: 'bold', marginBottom: '0.25rem' }}>
             Next Stop
           </div>
-          <h3 style={{ fontSize: '1.4rem', color: '#182A38', margin: '0 0 0.5rem' }}>
-            {nextStop.emoji} {nextStop.name}
+          <h3 style={{ fontSize: '1.4rem', color: '#182A38', margin: '0 0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+            {nextStop.name}
           </h3>
           <p style={{ fontSize: '0.9rem', color: '#4A6B8A', margin: '0 0 1.25rem', fontWeight: 500 }}>
             {nextStop.mode === 'cloze' && '📖 Spanish MAZE Reading challenge'}
@@ -279,7 +309,7 @@ export default function InteractiveMap({ currentStop, onContinue, treats, outfit
           <button 
             className="btn btn-primary btn-large" 
             style={{ width: '100%', maxWidth: '320px' }}
-            onClick={onContinue}
+            onClick={() => { playTick(); onContinue(); }}
             disabled={isWalking}
           >
             {isWalking ? 'Mila is walking... 🐾' : 'Let\'s Go! 🐾'}

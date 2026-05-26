@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { Heart, Sparkles, Bone, Droplets } from 'lucide-react';
 import MilaSprite from './MilaSprite';
 import { milaOutfits } from '../utils/gameData';
+import useSoundEffects from '../hooks/useSoundEffects';
 
 export default function MilaDoghouse({ 
   stopsCompleted, 
@@ -16,6 +18,9 @@ export default function MilaDoghouse({
   const [dogMood, setDogMood] = useState('idle');
   const [bubbleText, setBubbleText] = useState('¡Hola! ¡Qué bueno verte en mi casita! 🐾');
   const [particles, setParticles] = useState([]); // heart or bubble particles
+
+  // Sound Engine
+  const { playPop, playBark, playCheer, playSplash, playTick } = useSoundEffects();
 
   // Unlocked items based on stops completed
   const unlockedItems = [];
@@ -33,6 +38,7 @@ export default function MilaDoghouse({
   }, [puppyComment]);
 
   const toggleEquipped = (item) => {
+    playPop(); // Play dress-up pop sound
     if (equippedItems.includes(item)) {
       setEquippedItems(equippedItems.filter(i => i !== item));
     } else {
@@ -57,17 +63,29 @@ export default function MilaDoghouse({
 
   const handleFeed = () => {
     if (treats < 1) {
+      playTick();
       setBubbleText('¡Oh no! No tienes suficientes huesos... ¡Necesitamos caminar más! 🦴');
       return;
     }
-    setTreats(t => t - 1);
-    setDogMood('happy'); // Chew pose
-    setBubbleText('¡Guau! ¡Qué delicioso! ¡Gracias! 🦴😋');
-    spawnParticles('🍖', 6);
-    setTimeout(() => setDogMood('idle'), 1500);
+    
+    // Eating sounds sequence (series of fast ticks, ending in a happy bark)
+    playTick();
+    setTimeout(playTick, 150);
+    setTimeout(playTick, 300);
+    setTimeout(playTick, 450);
+    setTimeout(() => {
+      playBark();
+      setTreats(t => t - 1);
+      setDogMood('happy');
+      setBubbleText('¡Guau! ¡Qué delicioso! ¡Gracias! 🦴😋');
+      spawnParticles('🍖', 6);
+    }, 600);
+
+    setTimeout(() => setDogMood('idle'), 2000);
   };
 
   const handlePet = () => {
+    playCheer(); // Magical success chime for petting Mila!
     setDogMood('celebrating');
     setBubbleText('¡Te quiero, Carolina! ¡Jeje, eso hace cosquillas! 🥰');
     spawnParticles('❤️', 10);
@@ -76,25 +94,34 @@ export default function MilaDoghouse({
 
   const handleWash = () => {
     if (treats < 1) {
+      playTick();
       setBubbleText('¡Uy, no hay jabón! Consigue más huesos para bañarme. 🧼');
       return;
     }
+
+    playSplash(); // Water splashing sound!
+    setTimeout(playSplash, 300);
+
     setTreats(t => t - 1);
     setDogMood('happy');
     setBubbleText('¡Brr! ¡El agua está fresquita y limpia! 🧼🧼');
     spawnParticles('🫧', 12);
-    setTimeout(() => setDogMood('idle'), 2000);
+    
+    setTimeout(() => {
+      playBark(); // bark clean!
+      setDogMood('idle');
+    }, 2000);
   };
 
   return (
     <div className="screen doghouse-screen" style={{ background: 'linear-gradient(180deg, #E0F2FE 0%, #FAF6F0 100%)' }}>
       <header className="challenge-header">
-        <button className="back-btn" onClick={onBack}>← Back to trail</button>
+        <button className="back-btn" onClick={() => { playTick(); onBack(); }}>← Back to trail</button>
         <div className="challenge-badge">🏡 Mila's Doghouse</div>
       </header>
 
       <div className="doghouse-body" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
-        {/* Puppy Presentation Area */}
+        {/* Puppy Presentation Stage */}
         <div 
           className="doghouse-stage"
           style={{
@@ -185,7 +212,7 @@ export default function MilaDoghouse({
         >
           <button 
             className={`tab-btn ${activeTab === 'dress' ? 'active' : ''}`}
-            onClick={() => setActiveTab('dress')}
+            onClick={() => { playTick(); setActiveTab('dress'); }}
             style={{
               flex: 1,
               padding: '8px',
@@ -202,7 +229,7 @@ export default function MilaDoghouse({
           </button>
           <button 
             className={`tab-btn ${activeTab === 'care' ? 'active' : ''}`}
-            onClick={() => setActiveTab('care')}
+            onClick={() => { playTick(); setActiveTab('care'); }}
             style={{
               flex: 1,
               padding: '8px',
@@ -272,7 +299,7 @@ export default function MilaDoghouse({
               })}
             </div>
           ) : (
-            /* Pet Care interactions */
+            /* Pet Care Actions */
             <div 
               style={{
                 display: 'flex',
@@ -286,43 +313,53 @@ export default function MilaDoghouse({
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                <span style={{ fontWeight: 'bold', color: '#182A38', fontSize: '0.9rem' }}>My Treat Bag:</span>
+                <span style={{ fontWeight: 'bold', color: '#182A38', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Bone size={16} color="#A28043" /> My Treat Bag:
+                </span>
                 <span style={{ background: '#FAF6F0', padding: '4px 12px', borderRadius: '12px', fontWeight: 'bold', color: '#A28043', border: '1px solid #E2E8F0' }}>
                   🦴 {treats} Treats
                 </span>
               </div>
 
-              {/* Action buttons */}
+              {/* Feed Action */}
               <button 
                 className="btn btn-secondary" 
                 onClick={handleFeed}
                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px' }}
               >
-                <span>🍖 Feed Mila a Treat</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Bone size={16} color="#4A7C59" /> Feed Mila a Treat
+                </span>
                 <span style={{ background: 'rgba(162,128,67,0.1)', padding: '2px 8px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold', color: '#A28043' }}>
                   Costs 1 🦴
                 </span>
               </button>
 
+              {/* Wash Action */}
               <button 
                 className="btn btn-secondary" 
                 onClick={handleWash}
                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px' }}
               >
-                <span>🫧 Give Mila a Bubble Bath</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Droplets size={16} color="#3B82F6" /> Give Mila a Bubble Bath
+                </span>
                 <span style={{ background: 'rgba(162,128,67,0.1)', padding: '2px 8px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold', color: '#A28043' }}>
                   Costs 1 🦴
                 </span>
               </button>
 
+              {/* Pet Action */}
               <button 
                 className="btn btn-secondary" 
                 onClick={handlePet}
                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px' }}
               >
-                <span>❤️ Pet Mila</span>
-                <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#4A7C59' }}>
-                  FREE
+                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Heart size={16} color="#A63D40" /> Pet Mila
+                </span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#4A7C59', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                  <Sparkles size={12} /> FREE
                 </span>
               </button>
             </div>

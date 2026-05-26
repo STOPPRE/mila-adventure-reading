@@ -1,9 +1,14 @@
 import React, { useState, useMemo } from 'react';
+import { Waves, HelpCircle } from 'lucide-react';
 import MilaSprite from '../MilaSprite';
+import useSoundEffects from '../../hooks/useSoundEffects';
 
 export default function RiverChallenge({ challengeData, onComplete, onSkip, puppyComment }) {
   const { word, syllables, narrative } = challengeData;
   const letters = word.split('');
+
+  // Sound Engine
+  const { playTick, playSplash, playCheer, playIncorrect } = useSoundEffects();
 
   // Correct split positions (after which letter index, 1-indexed)
   const correctSplits = useMemo(() => {
@@ -24,12 +29,14 @@ export default function RiverChallenge({ challengeData, onComplete, onSkip, pupp
 
   const toggleSplit = (pos) => {
     if (showResult) return;
+    playTick(); // click split!
     setUserSplits((s) =>
       s.includes(pos) ? s.filter((x) => x !== pos) : [...s, pos].sort((a, b) => a - b)
     );
   };
 
   const checkAnswer = () => {
+    playTick();
     const sorted = [...userSplits].sort((a, b) => a - b);
     const matches =
       sorted.length === correctSplits.length &&
@@ -47,16 +54,20 @@ export default function RiverChallenge({ challengeData, onComplete, onSkip, pupp
     function runHopSequence() {
       if (hopSeq < maxHops) {
         setActiveHopIndex(hopSeq);
+        // Play wood step tick sound for each hop!
+        playTick();
         hopSeq++;
         setTimeout(runHopSequence, 600);
       } else {
         // Final landing
         if (matches) {
+          playCheer(); // Success Chime!
           setHopState('crossing'); // crossed successfully
           setActiveHopIndex(maxHops); // on right bank
           setTimeout(() => onComplete(true), 2000);
         } else {
-          setHopState('splash'); // Splash!
+          playSplash(); // SPLASH noise!
+          setHopState('splash');
           setTimeout(() => {
             // reset back to left bank after splash
             setActiveHopIndex(-1);
@@ -75,8 +86,10 @@ export default function RiverChallenge({ challengeData, onComplete, onSkip, pupp
   return (
     <div className="screen challenge-screen river-screen">
       <div className="challenge-header">
-        <button className="back-btn" onClick={onSkip}>← Exit</button>
-        <div className="challenge-badge">🪨 Syllable Stones</div>
+        <button className="back-btn" onClick={() => { playTick(); onSkip(); }}>← Exit</button>
+        <div className="challenge-badge" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Waves size={14} color="#C4A456" /> Syllable Stones
+        </div>
       </div>
 
       <div className="challenge-body">

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { Languages, Trophy, HelpCircle } from 'lucide-react';
 import MilaSprite from '../MilaSprite';
+import useSoundEffects from '../../hooks/useSoundEffects';
 
 const BALLOON_COLORS = [
   'linear-gradient(to bottom, #EF4444, #B91C1C)', // Red
@@ -16,6 +18,9 @@ export default function BalloonChallenge({ challengeData, onComplete, onSkip, pu
   const [shuffledChoices, setShuffledChoices] = useState([]);
   const [poppedIndex, setPoppedIndex] = useState(null);
 
+  // Sound Engine
+  const { playPop, playCheer, playIncorrect, playTick } = useSoundEffects();
+
   useEffect(() => {
     const choicesList = [correct, ...distractors];
     setShuffledChoices(choicesList.sort(() => Math.random() - 0.5));
@@ -24,12 +29,18 @@ export default function BalloonChallenge({ challengeData, onComplete, onSkip, pu
   const handlePop = (choice, index) => {
     if (selected !== null) return;
     
+    playPop(); // Pop sound effect!
     setSelected(choice);
     setPoppedIndex(index);
     const isCorrect = choice === correct;
 
     setTimeout(() => {
       setShowResult(true);
+      if (isCorrect) {
+        playCheer();
+      } else {
+        playIncorrect();
+      }
       setTimeout(() => {
         onComplete(isCorrect);
       }, 2500);
@@ -39,8 +50,10 @@ export default function BalloonChallenge({ challengeData, onComplete, onSkip, pu
   return (
     <div className="screen challenge-screen balloon-screen">
       <div className="challenge-header">
-        <button className="back-btn" onClick={onSkip}>← Exit</button>
-        <div className="challenge-badge">🔤 Cognates Match</div>
+        <button className="back-btn" onClick={() => { playTick(); onSkip(); }}>← Exit</button>
+        <div className="challenge-badge" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Languages size={14} color="#C4A456" /> Cognates Match
+        </div>
       </div>
 
       <div className="challenge-body">
